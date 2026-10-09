@@ -1,0 +1,23 @@
+node_modules/
+.DS_Store
+.sites-runtime/
+test-results/
+
+android/build/
+android/local.properties
+
+# Local credentials, generated artifacts and unrelated local skills
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.pem
+*.key
+*.log
+android/dist/
+skills/
+session.json
+shelf.json
+cache/
+library/

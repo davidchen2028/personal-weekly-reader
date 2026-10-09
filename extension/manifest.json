@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "周刊阅读器 · 本机会话桥接",
+  "version": "4.0.1",
+  "description": "一次配对，分别同步四刊登录态到本机阅读器，并显示各刊诊断状态。",
+  "permissions": [
+    "cookies",
+    "storage",
+    "alarms",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://*.caixin.com/*",
+    "http://*.caixin.com/*",
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "周刊阅读器"
+  },
+  "optional_host_permissions": [
+    "https://*.eeo.com.cn/*",
+    "http://*.eeo.com.cn/*",
+    "https://*.mycaijing.com/*",
+    "http://*.mycaijing.com/*",
+    "https://*.cbnweek.com/*",
+    "http://*.cbnweek.com/*"
+  ]
+}
