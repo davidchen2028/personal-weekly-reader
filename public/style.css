@@ -72,3 +72,7 @@ body.issue-view>header{display:flex}body.issue-view>#library-panel{display:none}
 [data-theme=ink].reading .state-complete{color:#a4cbb0}[data-theme=ink].reading :is(.state-partial,.state-restricted,.state-preview){color:#dbb888}
 
 #shelf-sync{font-size:12px;color:var(--muted)}
+
+.cache-badge{position:absolute;top:10px;right:10px;padding:5px 9px;border-radius:5px;background:#244f46;color:#fff;font-size:12px;font-weight:600;line-height:1.5;box-shadow:0 2px 7px #0002;pointer-events:none}
+
+.cache-badge.mostly{background:#526e55}.cache-badge.partial{background:#8a6b37}.cache-note{font-size:12px;color:var(--muted);margin:8px 0 0;line-height:1.5}
