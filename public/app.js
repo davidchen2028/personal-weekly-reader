@@ -5,6 +5,7 @@ const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 let issues=[],currentIssue=null,version=0,activeRead=null,currentArticle=null;let prefs;try{prefs=JSON.parse(localStorage.getItem('reading')||'{}')}catch{prefs={}}
 const provider=new URLSearchParams(location.search).get('provider')||(location.hash?'caixin':localStorage.getItem('provider')||'caixin');
 const publication=provider==='cbnweek'?'第一财经':provider==='caijing'?'财经杂志':provider==='eeo'?'经济观察报':'财新周刊',publisher=provider==='cbnweek'?'第一财经':provider==='caijing'?'财经杂志':provider==='eeo'?'经济观察报':'财新';
+$('#caijing-rate').hidden=provider!=='caijing';
 $('#brand-name').textContent=publisher;document.title=publisher+' · 个人周刊阅读器';
 localStorage.setItem('provider',provider);document.body.dataset.provider=provider;
 $('#provider').value=provider;$('#provider').onchange=e=>{location.href='?provider='+e.target.value};

@@ -1,6 +1,6 @@
 import {load} from 'cheerio';
 import {mkdir,readFile,writeFile,rename} from 'node:fs/promises';
-import {request} from '../lib/network.mjs';
+import {request,reportSiteFailure} from '../lib/network.mjs';
 const ROOT='https://www.mycaijing.com';
 const HOSTS=new Set(['www.mycaijing.com','res.caijingmobile.com']);
 const clean=s=>String(s||'').replace(/\s+/g,' ').trim();
@@ -23,7 +23,7 @@ export class CaijingProvider{
  shelf(signal){if(!this.discovery)this.discovery=this.discover(signal).finally(()=>this.discovery=null);return this.discovery}
  async discover(signal){const all=new Map(this.catalog.issues.map(i=>[i.id,i]));for(const type of [0,1]){const html=(await this.http(ROOT+'/issue?type='+type,{signal})).body.toString('utf8');const years=caijingYears(html);if(!years.length)throw Error('财经年份列表无法识别');for(const year of years){const key=type+':'+year;const progress=this.catalog.progress[key];let page=1,last=1;do{signal?.throwIfAborted();const result=await this.http(`${ROOT}/issue/ajax-list?year=${year}&type=${type}&page=${page}`,{signal,method:'POST'});const parsed=parseCaijingShelf(JSON.parse(result.body.toString('utf8')),year,type,page);const known=parsed.issues.every(i=>all.has(i.id));for(const i of parsed.issues)all.set(i.id,i);last=parsed.lastPage;const next=page===1&&progress&&!progress.complete?Math.max(2,progress.next):page+1;this.catalog.issues=[...all.values()].sort((a,b)=>b.date.localeCompare(a.date));this.catalog.progress[key]={next,complete:next>last};await this.save();if(progress?.complete&&known&&page===1)break;page=next;}while(page<=last)}}return this.catalog.issues}
  async issue(url,signal){return parseCaijingIssue((await this.http(caijingRef(url,'issue').url,{signal})).body.toString('utf8'),url)}
- async read(url,signal,progress=()=>{}){url=caijingRef(url,'article').url;progress('正在读取财经正文');const revision=this.sessions.state.revision;const ctx=this.sessions.state.cookies.length?await this.sessions.contextFor(revision):null;const html=(await request(ctx,url,{signal,validator:caijingURL})).body.toString('utf8');let data=parseCaijingArticle(html,url);if(!data.blocks.length)throw Object.assign(Error('财经官网返回空正文，已停止读取'),{code:'EMPTY_CONTENT'});
- if(data.access==='unverified'&&ctx){const page=await ctx.newPage();const abort=()=>page.close().catch(()=>{});signal?.addEventListener('abort',abort,{once:true});try{progress('正在核对财经页面正文');await page.goto(url,{waitUntil:'domcontentloaded',timeout:15000});await page.locator('.article-content').waitFor({timeout:6000});data=parseCaijingArticle(await page.content(),url)}finally{signal?.removeEventListener('abort',abort);await page.close().catch(()=>{})}}
+ async read(url,signal,progress=()=>{}){url=caijingRef(url,'article').url;progress('正在读取财经正文');const revision=this.sessions.state.revision;const ctx=this.sessions.state.cookies.length?await this.sessions.contextFor(revision):null;const html=(await request(ctx,url,{signal,validator:caijingURL})).body.toString('utf8');let data=parseCaijingArticle(html,url);if(!data.blocks.length){const error=Object.assign(Error('财经官网返回空正文，已停止读取'),{code:'EMPTY_CONTENT'});await reportSiteFailure(caijingURL,error);throw error}
+ // Do not automatically navigate a browser to retry an unverified response.
  signal?.throwIfAborted();if(this.sessions.state.revision!==revision)throw Error('财经会话已更新，请重试');return data}
 }

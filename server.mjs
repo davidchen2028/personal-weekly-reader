@@ -12,10 +12,12 @@ import {parseShelf,parseIssue,safeURL,articleKey} from './parsers.mjs';
 import {Sessions} from './lib/session.mjs';
 import {ArticleFetcher} from './lib/article-fetcher.mjs';
 import {Cache,digest} from './lib/cache.mjs';
-import {request} from './lib/network.mjs';
+import {request,protectSite} from './lib/network.mjs';
+import {SiteBudget} from './lib/site-budget.mjs';
 async function createSingleApp({port=4317,autoSync=false,provider="caixin",bridgeSessions=null,dataDir=`${homedir()}/Library/Application Support/CaixinReader/v2`}={}){
  const domain={caixin:'caixin.com',eeo:'eeo.com.cn',caijing:'mycaijing.com',cbnweek:'cbnweek.com'}[provider],label={caixin:'财新',eeo:'经济观察报',caijing:'财经杂志',cbnweek:'第一财经'}[provider];
  const app=express(),origin=`http://127.0.0.1:${port}`,sessions=await new Sessions(dataDir,domain).init(),cache=await new Cache(dataDir+'/cache',{provider}).init(),fetcher=provider==='cbnweek'?await new CbnProvider(sessions,dataDir+'/discovery').init():provider==='caijing'?await new CaijingProvider(sessions,dataDir+'/discovery').init():provider==='eeo'?await new EeoProvider(sessions,dataDir+'/discovery').init():new ArticleFetcher(sessions);
+ if(provider==='caijing')protectSite(caijingURL,await new SiteBudget(dataDir).init());
  const validate=provider==='cbnweek'?cbnURL:provider==='caijing'?caijingURL:provider==='eeo'?eeoURL:safeURL,validateArticle=provider==='cbnweek'?u=>cbnRef(u,'article'):provider==='caijing'?u=>caijingRef(u,'article'):provider==='eeo'?u=>{if(!eeoRef(u).id)throw Error('缺少文章标识')}:articleKey;
  const remote=(ctx,url,options={})=>request(ctx,url,{...options,validator:validate});
  const fetchShelf=async signal=>{
