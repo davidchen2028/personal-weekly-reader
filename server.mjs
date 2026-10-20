@@ -13,11 +13,13 @@ import {Sessions} from './lib/session.mjs';
 import {ArticleFetcher} from './lib/article-fetcher.mjs';
 import {Cache,digest} from './lib/cache.mjs';
 import {request,protectSite} from './lib/network.mjs';
+import {ReadingState} from './lib/reading-state.mjs';
 import {SiteBudget} from './lib/site-budget.mjs';
 async function createSingleApp({port=4317,autoSync=false,provider="caixin",bridgeSessions=null,dataDir=`${homedir()}/Library/Application Support/CaixinReader/v2`}={}){
  const domain={caixin:'caixin.com',eeo:'eeo.com.cn',caijing:'mycaijing.com',cbnweek:'cbnweek.com'}[provider],label={caixin:'财新',eeo:'经济观察报',caijing:'财经杂志',cbnweek:'第一财经'}[provider];
  const app=express(),origin=`http://127.0.0.1:${port}`,sessions=await new Sessions(dataDir,domain).init(),cache=await new Cache(dataDir+'/cache',{provider}).init(),fetcher=provider==='cbnweek'?await new CbnProvider(sessions,dataDir+'/discovery').init():provider==='caijing'?await new CaijingProvider(sessions,dataDir+'/discovery').init():provider==='eeo'?await new EeoProvider(sessions,dataDir+'/discovery').init():new ArticleFetcher(sessions);
  if(provider==='caijing')protectSite(caijingURL,await new SiteBudget(dataDir).init());
+ const readingState=await new ReadingState(dataDir).init();
  const validate=provider==='cbnweek'?cbnURL:provider==='caijing'?caijingURL:provider==='eeo'?eeoURL:safeURL,validateArticle=provider==='cbnweek'?u=>cbnRef(u,'article'):provider==='caijing'?u=>caijingRef(u,'article'):provider==='eeo'?u=>{if(!eeoRef(u).id)throw Error('缺少文章标识')}:articleKey;
  const remote=(ctx,url,options={})=>request(ctx,url,{...options,validator:validate});
  const fetchShelf=async signal=>{
@@ -68,7 +70,7 @@ async function createSingleApp({port=4317,autoSync=false,provider="caixin",bridg
  article:async(url,owner,signal,force=false)=>{const hit=await archive.get(owner.namespace,url);if(!force&&hit&&['complete','unverified'].includes(hit.access))return hit;let data=await cache.get(workerSessions.state.namespace,url);if(force||data?.access!=='complete'||!currentParser(data))data=await readSlots.run(()=>workerFetcher.read(url,signal,undefined,force),signal,1);signal.throwIfAborted();if(owner.namespace!==archiveOwner(workerSessions).namespace)throw Error('登录会话已变化');if(data.access==='restricted')throw Object.assign(Error(data.reason),{access:'restricted'});if(data.blocks?.length)await archive.put(owner.namespace,url,data);return data},
  image:async(src,ref,owner,signal)=>archiveImage(src,ref,(provider==='cbnweek'?cbnRef(ref).type!=='article':provider==='caijing'?caijingRef(ref).kind==='issue':provider==='eeo'?!eeoRef(ref).id:/\/cw\d+\//.test(ref))?{namespace:'public',hasSession:false}:owner,signal,workerSessions)
  }).init();
- const coverData=d=>{if(!d.cover)return d;const key=archive.key('public',d.url),id=digest(d.cover);resources.set(key+'/'+id,{ns:'public',src:d.cover,referer:d.url,key,id,archive:true});return{...d,cover:`/api/image/${key}/${id}?provider=${provider}`}};
+ const coverData=d=>{d={...d,finished:readingState.has(d.url)};if(!d.cover)return d;const key=archive.key('public',d.url),id=digest(d.cover);resources.set(key+'/'+id,{ns:'public',src:d.cover,referer:d.url,key,id,archive:true});return{...d,cover:`/api/image/${key}/${id}?provider=${provider}`}};
  if(autoSync)library.startTimer();
  const extensionOrigin=o=>/^chrome-extension:\/\/[a-p]{32}$/.test(o||'');
  app.use((req,res,next)=>{
@@ -99,7 +101,8 @@ async function createSingleApp({port=4317,autoSync=false,provider="caixin",bridg
 if(provider==='caijing'&&req.query.rescan==='1'&&!fetcher.discovery)fetcher.catalog.progress={};if(provider==='eeo'&&req.query.rescan==='1'&&!fetcher.discovery){fetcher.catalog.complete=false;fetcher.catalog.next='https://www.eeo.com.cn/epaper/eeocover/1.shtml'}try{list=await getShelf()}catch(e){if(req.query.refresh==='1'||!library.catalog.issues.length)throw e;list=library.catalog.issues}res.json(list.map(coverData))});
  app.get('/api/issue',async(req,res)=>{const url=validate(req.query.url);let detail=req.query.refresh==='1'?null:library.catalog.details[url];if(!detail)detail=await getIssue(url,undefined,0,req.query.refresh==='1');res.json(coverData(detail))});
  app.get('/api/library/status',async(req,res)=>{const s=library.status();if(provider!=='caixin')s.message=(s.message||'').replaceAll('财新',label);res.json(s)});
- app.post('/api/library/issues',async(req,res)=>{if(!Array.isArray(req.body.urls)||req.body.urls.length>100)throw Error('每次最多检查100期');const urls=req.body.urls.map(url=>validate(url));const issues=await library.issueCoverage(urls);res.json({cachedIssues:issues.filter(i=>i.state==='complete').map(i=>i.url),issues})});
+ app.post('/api/reading-state',async(req,res)=>{const url=validate(req.body.url);if(typeof req.body.finished!=='boolean')throw Error('读完状态无效');res.json(await readingState.set(url,req.body.finished))});
+ app.post('/api/library/issues',async(req,res)=>{if(!Array.isArray(req.body.urls)||req.body.urls.length>100)throw Error('每次最多检查100期');const urls=req.body.urls.map(url=>validate(url));const issues=(await library.issueCoverage(urls)).map(i=>({...i,finished:readingState.has(i.url)}));res.json({cachedIssues:issues.filter(i=>i.state==='complete').map(i=>i.url),issues})});
  app.post('/api/library/retry',async(req,res)=>{if(library.task)throw Error('请先暂停当前缓存任务');await library.retryFailed();res.json(library.start())});
  app.post('/api/library/start',(req,res)=>res.json(library.start()));
  app.post('/api/library/pause',async(req,res)=>{await library.pause();res.json(library.status())});

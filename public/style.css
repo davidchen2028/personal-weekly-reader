@@ -76,3 +76,15 @@ body.issue-view>header{display:flex}body.issue-view>#library-panel{display:none}
 .cache-badge{position:absolute;top:10px;right:10px;padding:5px 9px;border-radius:5px;background:#244f46;color:#fff;font-size:12px;font-weight:600;line-height:1.5;box-shadow:0 2px 7px #0002;pointer-events:none}
 
 .cache-badge.mostly{background:#526e55}.cache-badge.partial{background:#8a6b37}.cache-note{font-size:12px;color:var(--muted);margin:8px 0 0;line-height:1.5}
+
+.finished-badge{position:absolute;left:10px;bottom:44px;background:#315b86;color:#fff;padding:5px 9px;border-radius:5px;font-size:12px;font-weight:600;line-height:1.5;pointer-events:none}.issue-reading-status{display:flex;align-items:center;gap:12px;margin:0 0 20px}.finished-label{color:#315b86;font-weight:600;font-size:14px}.issue-reading-status button{font-size:14px;padding:8px 14px}.issue-reading-status button[aria-pressed=true]{border-color:#315b86;color:#315b86}
+
+.issue-aside .issue-reading-status{flex-wrap:wrap;margin:0 0 24px}.issue-aside .issue-reading-status button{width:auto}@media(max-width:760px){.issue-view .issue-aside{display:block;position:static}.issue-view .issue-aside>img,.issue-view .issue-aside>.eyebrow,.issue-view .issue-aside>nav,.issue-view .issue-aside>.source{display:none}.issue-aside .issue-reading-status{justify-content:flex-start;margin-bottom:20px}.issue-aside .issue-reading-status button{width:auto}}
+
+#toggle-finished{display:inline-grid;padding:5px 9px;border:1px solid transparent;background:transparent;font-size:13px;line-height:1.6;border-radius:5px}
+#toggle-finished[aria-pressed=true]{background:#315b8610;border-color:transparent;color:#315b86}
+#toggle-finished>span{grid-area:1/1}
+#toggle-finished .finished-hover{visibility:hidden}
+#toggle-finished[aria-pressed=true]:hover .finished-default,#toggle-finished[aria-pressed=true]:focus-visible .finished-default{visibility:hidden}
+#toggle-finished[aria-pressed=true]:hover .finished-hover,#toggle-finished[aria-pressed=true]:focus-visible .finished-hover{visibility:visible}
+#toggle-finished:hover{background:#315b861a}

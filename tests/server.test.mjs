@@ -21,6 +21,13 @@ test('本地 API：来源限制、一次性配对、鉴权同步和撤销',async
   assert.equal((await post('bridge/disconnect',{},headers)).status,200);
   assert.equal((await post('bridge/sync',{cookies:[]},headers)).status,400);
   const badges=await post('library/issues',{urls:['https://weekly.caixin.com/2026/cw1225/','https://weekly.caixin.com/2026/cw1226/']});assert.equal(badges.status,200);assert.deepEqual((await badges.json()).cachedIssues,[]);
+  const issue='https://weekly.caixin.com/2026/cw1225/';
+  assert.equal((await post('reading-state',{url:issue,finished:true})).status,200);
+  let readBadge=await(await post('library/issues',{urls:[issue]})).json();assert.equal(readBadge.issues[0].finished,true);
+  assert.equal((await post('reading-state',{url:issue,finished:false})).status,200);
+  readBadge=await(await post('library/issues',{urls:[issue]})).json();assert.equal(readBadge.issues[0].finished,false);
+  assert.equal((await post('reading-state',{url:issue,finished:'true'})).status,400);
+
   assert.equal((await fetch(base+'/api/image/'+'a'.repeat(64)+'/'+'b'.repeat(64))).status,404);
  }finally{server.closeAllConnections();await new Promise(r=>server.close(r));await runtime.close();await rm(dir,{recursive:true,force:true})}
 });
